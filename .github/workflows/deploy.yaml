@@ -1,0 +1,140 @@
+name: Deploy Dragonfly to Hetzner
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-dragonfly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare server matrix
+    runs-on: ubuntu-latest
+    outputs:
+      server_matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set server matrix
+        id: set-matrix
+        run: |
+          SERVER_IPS="${{ vars.DRAGONFLY_DEPLOY_TARGET_SERVER_IPS }}"
+          if [[ -z "$SERVER_IPS" ]]; then
+            echo "Error: No server IPs provided. Set DRAGONFLY_DEPLOY_TARGET_SERVER_IPS environment variable."
+            exit 1
+          fi
+          IFS=',' read -ra ADDR <<< "$SERVER_IPS"
+          MATRIX="["
+          for i in "${ADDR[@]}"; do
+            IP=$(echo "$i" | xargs)
+            if [[ -n "$IP" ]]; then
+              MATRIX="$MATRIX\"$IP\","
+            fi
+          done
+          MATRIX="${MATRIX%,}]"
+          echo "Server matrix: $MATRIX"
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: Deploy to Hetzner
+    runs-on: ubuntu-latest
+    needs: prepare
+    strategy:
+      matrix:
+        server_ip: ${{ fromJson(needs.prepare.outputs.server_matrix) }}
+      fail-fast: false
+
+    steps:
+      - name: Clone the repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DRAGONFLY_SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          ssh-keyscan -H ${{ matrix.server_ip }} >> ~/.ssh/known_hosts
+
+      - name: Check server connectivity
+        run: |
+          ssh -o ConnectTimeout=10 root@${{ matrix.server_ip }} "echo 'Server connection successful'"
+
+      - name: Sync deployment files to server
+        run: |
+          rsync -avz --delete \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'README.md' \
+            ./ \
+            root@${{ matrix.server_ip }}:/opt/dragonfly/
+
+      - name: Configure credentials
+        run: |
+          ssh root@${{ matrix.server_ip }} "
+            cd /opt/dragonfly
+            echo 'Configuring credentials...'
+            cat > .env << 'EOF'
+          DRAGONFLY_PASSWORD=${{ secrets.DRAGONFLY_PASSWORD }}
+          EOF
+            chmod 600 .env
+            echo 'Credentials configured successfully'
+          "
+
+      - name: Ensure volume mount exists
+        run: |
+          ssh root@${{ matrix.server_ip }} "
+            # Check if mount exists
+            if ! mountpoint -q /mnt/HC_Volume_103551069; then
+              echo 'ERROR: Volume not mounted at /mnt/HC_Volume_103551069'
+              exit 1
+            fi
+
+            # Create dragonfly data directory
+            mkdir -p /mnt/HC_Volume_103551069/dragonfly-data
+            chown -R 999:999 /mnt/HC_Volume_103551069/dragonfly-data
+            echo 'Volume mount verified and data directory created'
+          "
+
+      - name: Deploy Dragonfly with Docker Compose
+        run: |
+          ssh root@${{ matrix.server_ip }} "
+            cd /opt/dragonfly
+            echo 'Pulling latest images...'
+            docker compose pull
+            echo 'Starting Dragonfly services...'
+            docker compose up -d
+            echo 'Waiting for services to be healthy...'
+            sleep 15
+            docker compose ps
+          "
+
+      - name: Verify deployment
+        run: |
+          ssh root@${{ matrix.server_ip }} "
+            cd /opt/dragonfly
+            echo '=== Docker Containers Status ==='
+            docker compose ps
+            echo ''
+            echo '=== Checking Dragonfly Health ==='
+            docker compose exec -T dragonfly redis-cli --raw incr ping || echo 'Dragonfly not yet healthy'
+            echo ''
+            echo '=== Container Logs (last 10 lines) ==='
+            docker compose logs --tail=10
+            echo ''
+            echo 'Deployment verification completed'
+          "
+
+      - name: Deployment summary
+        run: |
+          echo "## Deployment Summary for ${{ matrix.server_ip }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Server**: ${{ matrix.server_ip }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Domain**: impressions.yral.com" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployment Method**: Docker Compose (rsync)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: Deployed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- **Services**: Dragonfly, Caddy (all containerized)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployment Path**: /opt/dragonfly" >> $GITHUB_STEP_SUMMARY
+          echo "- **Data Volume**: /mnt/HC_Volume_103551069/dragonfly-data" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,50 @@
+version: '3.8'
+
+x-logging: &default-logging
+  driver: journald
+  options:
+    tag: "{{.Name}}"
+
+services:
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    container_name: dragonfly
+    command:
+      - --requirepass=${DRAGONFLY_PASSWORD}
+      - --dir=/data
+      - --dbfilename=dump.rdb
+      - --snapshot_cron=0 */6 * * *  # Snapshot every 6 hours
+      - --cache_mode=true
+      - --maxmemory=80gb
+      - --tls=false  # Caddy handles TLS
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - /mnt/HC_Volume_103551069/dragonfly-data:/data
+    restart: always
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  caddy:
+    image: caddy:alpine
+    container_name: dragonfly-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - dragonfly
+    restart: always
+    logging: *default-logging
+
+volumes:
+  caddy-data:
+  caddy-config:
