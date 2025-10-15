@@ -21,7 +21,7 @@ jobs:
           docker compose -f docker-compose.yml config --quiet
           echo "✓ docker-compose.yml is valid"
 
-      - name: Validate Caddyfile syntax
+      - name: Validate nginx.conf syntax
         run: |
-          docker run --rm -v $(pwd)/Caddyfile:/etc/caddy/Caddyfile caddy:alpine caddy validate --config /etc/caddy/Caddyfile
-          echo "✓ Caddyfile is valid"
+          docker run --rm -v $(pwd)/nginx.conf:/etc/nginx/nginx.conf:ro nginx:alpine nginx -t -c /etc/nginx/nginx.conf
+          echo "✓ nginx.conf is valid"
