@@ -101,6 +101,17 @@ jobs:
             echo '✓ SSL certificates found at /etc/letsencrypt/live/feed-impressions.yral.com/'
           "
 
+      - name: Stop system nginx if running
+        run: |
+          ssh root@${{ matrix.server_ip }} "
+            if systemctl is-active --quiet nginx; then
+              echo 'Stopping system nginx...'
+              systemctl stop nginx
+              systemctl disable nginx
+            fi
+            echo '✓ System nginx stopped'
+          "
+
       - name: Deploy Dragonfly with Docker Compose
         run: |
           ssh root@${{ matrix.server_ip }} "
