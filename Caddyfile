@@ -1,0 +1,4 @@
+impressions.yral.com {
+	# Reverse proxy to Dragonfly (Redis protocol)
+	reverse_proxy dragonfly:6379
+}

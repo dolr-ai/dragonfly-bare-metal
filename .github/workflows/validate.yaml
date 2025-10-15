@@ -1,0 +1,27 @@
+name: Validate Configuration
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  validate:
+    name: Validate docker-compose configuration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone the repository
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose.yml
+        run: |
+          docker compose -f docker-compose.yml config --quiet
+          echo "✓ docker-compose.yml is valid"
+
+      - name: Validate Caddyfile syntax
+        run: |
+          docker run --rm -v $(pwd)/Caddyfile:/etc/caddy/Caddyfile caddy:alpine caddy validate --config /etc/caddy/Caddyfile
+          echo "✓ Caddyfile is valid"
