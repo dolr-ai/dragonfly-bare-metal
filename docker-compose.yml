@@ -10,12 +10,12 @@ services:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     container_name: dragonfly
     command:
-      - --requirepass=${DRAGONFLY_PASSWORD}
+      - --requirepass=${DRAGONFLY_ROOT_PASSWORD}
       - --dir=/data
       - --dbfilename=dump.rdb
       - --snapshot_cron=0 */6 * * *  # Snapshot every 6 hours
       - --cache_mode=true
-      - --maxmemory=80gb
+      - --maxmemory=50gb
       - --tls=false  # Caddy handles TLS
     ports:
       - "127.0.0.1:6379:6379"
