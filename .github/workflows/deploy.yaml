@@ -120,6 +120,8 @@ jobs:
           echo "- **Domain**: impressions.yral.com" >> $GITHUB_STEP_SUMMARY
           echo "- **Deployment Method**: Docker Compose (rsync)" >> $GITHUB_STEP_SUMMARY
           echo "- **Status**: Deployed successfully" >> $GITHUB_STEP_SUMMARY
-          echo "- **Services**: Dragonfly, Caddy (all containerized)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Services**: Dragonfly, Nginx TLS proxy (all containerized)" >> $GITHUB_STEP_SUMMARY
           echo "- **Deployment Path**: /opt/dragonfly" >> $GITHUB_STEP_SUMMARY
           echo "- **Data Volume**: /mnt/HC_Volume_103551069/dragonfly-data" >> $GITHUB_STEP_SUMMARY
+          echo "- **TLS**: Let's Encrypt certificates at /etc/letsencrypt" >> $GITHUB_STEP_SUMMARY
+          echo "- **Ports**: 80 (HTTP), 443 (HTTPS), 6379 (Redis with TLS)" >> $GITHUB_STEP_SUMMARY
