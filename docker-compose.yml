@@ -12,7 +12,7 @@ services:
     command:
       - --requirepass=${DRAGONFLY_ROOT_PASSWORD}
       - --dir=/data
-      - --dbfilename=dump.rdb
+      - --dbfilename=dump
       - --snapshot_cron=0 */6 * * *  # Snapshot every 6 hours
       - --cache_mode=true
       - --maxmemory=50gb
