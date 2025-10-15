@@ -84,21 +84,6 @@ jobs:
             echo 'Credentials configured successfully'
           "
 
-      - name: Ensure volume mount exists
-        run: |
-          ssh root@${{ matrix.server_ip }} "
-            # Check if mount exists
-            if ! mountpoint -q /mnt/HC_Volume_103551069; then
-              echo 'ERROR: Volume not mounted at /mnt/HC_Volume_103551069'
-              exit 1
-            fi
-
-            # Create dragonfly data directory
-            mkdir -p /mnt/HC_Volume_103551069/dragonfly-data
-            chown -R 999:999 /mnt/HC_Volume_103551069/dragonfly-data
-            echo 'Volume mount verified and data directory created'
-          "
-
       - name: Deploy Dragonfly with Docker Compose
         run: |
           ssh root@${{ matrix.server_ip }} "
