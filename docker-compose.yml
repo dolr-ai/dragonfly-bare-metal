@@ -24,10 +24,11 @@ services:
     restart: always
     logging: *default-logging
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "redis-cli", "-a", "${DRAGONFLY_ROOT_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
       retries: 3
+      start_period: 10s
 
   nginx:
     image: nginx:alpine
@@ -40,6 +41,7 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
-      - dragonfly
+      dragonfly:
+        condition: service_healthy
     restart: always
     logging: *default-logging
