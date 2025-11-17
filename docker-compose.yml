@@ -10,23 +10,50 @@ services:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     container_name: dragonfly
     command:
+      # Authentication
       - --requirepass=${DRAGONFLY_ROOT_PASSWORD}
+      
+      # Data persistence
       - --dir=/data
       - --dbfilename=dump
       - --snapshot_cron=0 */6 * * *  # Snapshot every 6 hours
+      
+      # Memory management
       - --cache_mode=true
       - --maxmemory=50gb
+      
+      # Performance tuning
+      - --proactor_threads=8  # Use 8 threads for better multi-core utilization
+      - --primary_port_http_enabled=true  # Enable metrics endpoint
+      
+      # Logging
+      - --logtostderr  # Log to stderr for Docker logging
+      - --vmodule=*=1  # Set log verbosity (0=ERROR, 1=WARNING, 2=INFO, 3=DEBUG)
+      
+      # Network
       - --tls=false  # Nginx handles TLS
     volumes:
       - /mnt/HC_Volume_103551069/dragonfly-data:/data
-    restart: always
+    restart: unless-stopped  # Better than 'always' - respects manual stops
     logging: *default-logging
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${DRAGONFLY_ROOT_PASSWORD}", "ping"]
-      interval: 10s
+      interval: 30s  # Check every 30s (less aggressive than 10s)
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 30s  # Give it more time to start
+    ulimits:
+      memlock: -1  # Recommended by Dragonfly for better memory management
+      nofile:
+        soft: 65536
+        hard: 65536
+    # Resource limits (optional but recommended for production)
+    deploy:
+      resources:
+        limits:
+          memory: 55gb  # Slightly higher than maxmemory for overhead
+        reservations:
+          memory: 50gb
 
   nginx:
     image: nginx:alpine
