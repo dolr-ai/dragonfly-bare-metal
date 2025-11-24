@@ -20,7 +20,7 @@ services:
       - --primary_port_http_enabled=true
       - --logtostderr
       - --vmodule=*=1  # 0=ERROR, 1=WARNING, 2=INFO, 3=DEBUG
-      - --tls=false
+      - --tls=false  # Nginx handles TLS
     volumes:
       - /mnt/HC_Volume_103551069/dragonfly-data:/data
     restart: unless-stopped
