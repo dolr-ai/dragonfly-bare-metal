@@ -10,63 +10,51 @@ services:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     container_name: dragonfly
     command:
-      # Authentication
       - --requirepass=${DRAGONFLY_ROOT_PASSWORD}
-      
-      # Data persistence
       - --dir=/data
       - --dbfilename=dump
-      - --snapshot_cron=0 */6 * * *  # Snapshot every 6 hours
-      
-      # Memory management
+      - --snapshot_cron=0 */6 * * *
       - --cache_mode=true
       - --maxmemory=50gb
-      
-      # Performance tuning
-      - --proactor_threads=8  # Use 8 threads for better multi-core utilization
-      - --primary_port_http_enabled=true  # Enable metrics endpoint
-      
-      # Logging
-      - --logtostderr  # Log to stderr for Docker logging
-      - --vmodule=*=1  # Set log verbosity (0=ERROR, 1=WARNING, 2=INFO, 3=DEBUG)
-      
-      # Network
-      - --tls=false  # Nginx handles TLS
+      - --proactor_threads=8
+      - --primary_port_http_enabled=true
+      - --logtostderr
+      - --vmodule=*=1  # 0=ERROR, 1=WARNING, 2=INFO, 3=DEBUG
+      - --tls=false
     volumes:
       - /mnt/HC_Volume_103551069/dragonfly-data:/data
-    restart: unless-stopped  # Better than 'always' - respects manual stops
+    restart: unless-stopped
     logging: *default-logging
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${DRAGONFLY_ROOT_PASSWORD}", "ping"]
-      interval: 30s  # Check every 30s (less aggressive than 10s)
+      interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 30s  # Give it more time to start
+      start_period: 30s
     ulimits:
-      memlock: -1  # Recommended by Dragonfly for better memory management
+      memlock: -1
       nofile:
         soft: 65536
         hard: 65536
-    # Resource limits (optional but recommended for production)
     deploy:
       resources:
         limits:
-          memory: 55gb  # Slightly higher than maxmemory for overhead
+          memory: 55gb
         reservations:
           memory: 50gb
 
-  nginx:
-    image: nginx:alpine
-    container_name: dragonfly-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-      - "6379:6379"  # Redis/Dragonfly with TLS
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-    depends_on:
-      dragonfly:
-        condition: service_healthy
-    restart: always
-    logging: *default-logging
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: dragonfly-nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #     - "6379:6379"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - /etc/letsencrypt:/etc/letsencrypt:ro
+  #   depends_on:
+  #     dragonfly:
+  #       condition: service_healthy
+  #   restart: always
+  #   logging: *default-logging
