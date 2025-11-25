@@ -16,17 +16,32 @@ services:
       - --snapshot_cron=0 */6 * * *  # Snapshot every 6 hours
       - --cache_mode=true
       - --maxmemory=50gb
+      - --proactor_threads=8
+      - --primary_port_http_enabled=true
+      - --logtostderr
+      - --vmodule=*=1  # 0=ERROR, 1=WARNING, 2=INFO, 3=DEBUG
       - --tls=false  # Nginx handles TLS
     volumes:
       - /mnt/HC_Volume_103551069/dragonfly-data:/data
-    restart: always
+    restart: unless-stopped
     logging: *default-logging
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${DRAGONFLY_ROOT_PASSWORD}", "ping"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 30s
+    ulimits:
+      memlock: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          memory: 55gb
+        reservations:
+          memory: 50gb
 
   nginx:
     image: nginx:alpine
