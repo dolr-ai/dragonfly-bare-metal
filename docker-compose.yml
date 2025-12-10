@@ -7,7 +7,7 @@ x-logging: &default-logging
 
 services:
   dragonfly:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.34.2
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.35.1
     container_name: dragonfly
     command:
       - --requirepass=${DRAGONFLY_ROOT_PASSWORD}
@@ -21,6 +21,8 @@ services:
       - --logtostderr
       - --vmodule=*=1  # 0=ERROR, 1=WARNING, 2=INFO, 3=DEBUG
       - --tls=false  # Nginx handles TLS
+      - --tiered_prefix=/data/tiered/dragonfly-tiered-file
+      - --tiered_offload_threshold=0.2
     volumes:
       - /mnt/HC_Volume_103551069/dragonfly-data:/data
     restart: unless-stopped
